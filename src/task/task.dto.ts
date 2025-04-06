@@ -1,3 +1,4 @@
+import { plainToInstance } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -7,6 +8,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { TaskEntity } from 'src/db/entities/task.entity';
 export enum TaskStatusEnum {
   DONE = 'DONE',
   TO_DO = 'TO_DO',
@@ -37,4 +39,18 @@ export class TaskDto {
 export interface FindAllParametes {
   title: string;
   status: string;
+}
+
+export class TaskConvert {
+  public static mapTaskEntityToDto(task: TaskEntity): TaskDto {
+    return plainToInstance(TaskDto, task);
+  }
+  public static mapTaskDtoToEntity(task: TaskDto): Partial<TaskEntity> {
+    return plainToInstance(TaskEntity, task);
+  }
+}
+
+export class TaskRouteParameters {
+  @IsUUID()
+  id: string;
 }
