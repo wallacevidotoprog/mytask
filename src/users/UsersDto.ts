@@ -3,3 +3,7 @@ export class UsersDtop {
   username: string;
   password: string;
 }
+export interface CreateUserResponse {
+  id: string;
+  username;
+}

@@ -1,23 +1,43 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { hashSync } from 'bcrypt';
+import { plainToInstance } from 'class-transformer';
+import { UserEntity } from 'src/db/entities/user.entity';
+import { Repository } from 'typeorm';
 import { v4 } from 'uuid';
 import { UsersDtop as UsersDto } from './UsersDto';
 
 @Injectable()
 export class UsersService {
+  constructor(
+    @InjectRepository(UserEntity)
+    private readonly userRepositoy: Repository<UserEntity>,
+  ) {}
   private readonly users: UsersDto[] = [];
-  create(newUser: UsersDto) {
-    if (this.users.find((u) => u.username === newUser.username)) {
-      throw new HttpException(
-        'Algo errado, tente outros username e password',
-        HttpStatus.CONFLICT,
-      );
+  async create(newUser: UsersDto) {
+    if (await this.findByUserName(newUser.username)) {
+      throw new ConflictException('User username exist');
     }
-    newUser.id = v4();
-    newUser.password = hashSync(newUser.password, 10);
-    this.users.push(newUser);
+    const dbUser = new UserEntity();
+    dbUser.id = v4();
+    dbUser.username = newUser.username;
+    dbUser.passwordHash = hashSync(newUser.password, 10);
+
+    const { id, username } = await this.userRepositoy.save(dbUser);
+    return { id, username };
   }
-  findByUserName(username: string): UsersDto | null {
-    return this.users.find((u) => u.username === username)|| null;
+  async findByUserName(username: string): Promise<UsersDto | null> {
+    const userFound = await this.userRepositoy.findOne({
+      where: { username },
+    });
+
+    if (!userFound) {
+      return null;
+    }
+
+    const userDto = plainToInstance(UsersDto, userFound);
+    userDto.password = userFound.passwordHash;
+    return userDto;
+    return userFound ? plainToInstance(UsersDto, userFound) : null;
   }
 }

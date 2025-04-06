@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Res } from '@nestjs/common';
 import { AuthResponseDto } from './AuthResponseDto';
 import { AuthService } from './auth.service';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -8,10 +9,19 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  singIn(
+  async singIn(
     @Body('username') username: string,
     @Body('password') password: string,
-  ): AuthResponseDto {
-    return this.service.singIn(username, password);
+    @Res({passthrough:true}) res:Response
+  ): Promise<AuthResponseDto> {
+    const respAuth =  await this.service.singIn(username, password);
+
+    res.cookie('Authorization', respAuth.token, {
+      httpOnly: true,     
+      maxAge: respAuth.expiresIn * 1000, 
+      sameSite: 'lax', 
+    });
+
+    return respAuth;
   }
 }
